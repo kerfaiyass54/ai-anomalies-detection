@@ -46,6 +46,32 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  kibana-visualizations:
+    build:
+      context: ./ai-anomalies-backend
+      dockerfile: kibana_visualizations/Dockerfile
+    environment:
+      KIBANA_URL: http://kibana:5601
+      KIBANA_SPACE: ${KIBANA_SPACE:-default}
+      KIBANA_API_KEY: ${KIBANA_API_KEY:-}
+      KIBANA_USERNAME: ${KIBANA_USERNAME:-}
+      KIBANA_PASSWORD: ${KIBANA_PASSWORD:-}
+      KIBANA_REQUEST_TIMEOUT_SECONDS: ${KIBANA_REQUEST_TIMEOUT_SECONDS:-10}
+    ports:
+      - "127.0.0.1:${KIBANA_VISUALIZATIONS_API_PORT:-8004}:8004"
+    depends_on:
+      kibana:
+        condition: service_healthy
+    networks: [observability]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   logstash:
     image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION:-9.5.5}
     environment:
