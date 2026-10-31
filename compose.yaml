@@ -51,17 +51,17 @@ services:
     environment:
       LS_JAVA_OPTS: ${LS_JAVA_OPTS:--Xms512m -Xmx512m}
       XPACK_MONITORING_ENABLED: "false"
-      ANOMALY_DETECTION_URL: http://anomaly-detection:8001/api/v1/anomalies/ingest
     ports:
       - "127.0.0.1:${LOGSTASH_BEATS_PORT:-5044}:5044"
     volumes:
-      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ${CONTAINER_LOGS_HOST_PATH:-./container-logs}:/var/log/containers:ro
+      - logstash_data:/usr/share/logstash/data
+    command: ["logstash", "--config.reload.automatic", "--api.http.host", "0.0.0.0"]
     depends_on:
       elasticsearch:
         condition: service_healthy
-      anomaly-detection:
-        condition: service_healthy
-    networks: [observability, data]
+    networks: [observability]
     mem_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9600/_node/pipelines >/dev/null"]
@@ -69,6 +69,53 @@ services:
       timeout: 5s
       retries: 20
       start_period: 60s
+    restart: unless-stopped
+
+  logstash-management:
+    build:
+      context: ./ai-anomalies-backend
+      dockerfile: logstash_management/Dockerfile
+    environment:
+      LOGSTASH_CONFIG_TOKEN: ${LOGSTASH_CONFIG_TOKEN:?Set LOGSTASH_CONFIG_TOKEN in .env}
+      LOGSTASH_CONFIG_DIRECTORY: /pipeline
+      LOGSTASH_API_URL: http://logstash:9600
+    ports:
+      - "127.0.0.1:${LOGSTASH_CONFIG_API_PORT:-8002}:8002"
+    volumes:
+      - ./logstash/pipeline:/pipeline
+    depends_on:
+      logstash:
+        condition: service_healthy
+    networks: [observability]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  elasticsearch-logs:
+    build:
+      context: ./ai-anomalies-backend
+      dockerfile: elasticsearch_logs/Dockerfile
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_LOGS_INDEX: logs
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_LOGS_API_PORT:-8003}:8003"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks: [observability]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
   postgresql:
@@ -198,6 +245,7 @@ networks:
 
 volumes:
   elasticsearch_data:
+  logstash_data:
   postgresql_data:
   anomaly_mlflow_data:
   prometheus_data:
