@@ -159,7 +159,7 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
-    networks: [data]
+    networks: [data, observability]
     mem_limit: 2g
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/docs')"]
@@ -180,6 +180,7 @@ services:
       - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     depends_on:
       alertmanager:

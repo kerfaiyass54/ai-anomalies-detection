@@ -1,0 +1,11 @@
+groups:
+  - name: anomaly_detection
+    rules:
+      - alert: AnomalyDetected
+        expr: anomaly_rate > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elevated log anomaly rate
+          description: More than 5 anomalies were detected in the preceding 60 seconds for at least 1 minute.

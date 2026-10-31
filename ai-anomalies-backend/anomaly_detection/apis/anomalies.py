@@ -1,10 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from starlette.responses import Response
 
 from ..errors import AnomalyProcessingError
 from ..schemas.anomaly import AnomalyDetectionResponse, LogEvent, LogEventIngestResponse, LogSourceType
 from ..services import ingest_log_event, run_log_anomaly_pipeline, save_anomalies
+from ..services.metrics import record_anomalies, refresh_anomaly_rate
 
 router = APIRouter(prefix="/api/v1/anomalies", tags=["anomaly detection"])
 MAX_LOG_FILE_BYTES = 10 * 1024 * 1024
@@ -24,6 +27,7 @@ async def detect_log_anomalies(
         text_content = content.decode("utf-8", errors="replace")
         result = run_log_anomaly_pipeline(text_content)
         saved = save_anomalies(result.anomalies, source_type=source_type)
+        record_anomalies(len(saved))
     except AnomalyProcessingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except Exception as exc:
@@ -49,9 +53,16 @@ def ingest_logstash_event(event: LogEvent) -> LogEventIngestResponse:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Log event scoring failed. Check model registry and database configuration.") from exc
+    record_anomalies(int(result.anomaly is not None))
     return LogEventIngestResponse(
         model_name=result.model_name,
         model_version=result.model_version,
         anomaly_detected=result.anomaly is not None,
         anomaly=result.anomaly,
     )
+
+
+@router.get("/metrics", include_in_schema=False)
+def metrics() -> Response:
+    refresh_anomaly_rate()
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
