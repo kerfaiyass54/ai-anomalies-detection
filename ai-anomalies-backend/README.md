@@ -27,6 +27,14 @@ Its API documentation is at `http://127.0.0.1:8001/docs`. `POST /api/v1/anomalie
 
 The service reads database settings from the repository-level `.env` (`POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, or `DATABASE_URL`). MLflow defaults to a local SQLite registry in the current working directory. Run the complete containerized service and database with `docker compose up --build anomaly-detection`.
 
+### Model retraining API
+
+`POST /api/v1/models/retrain` accepts a `.txt` file with fresh logs, preprocesses and splits it, fits a new model, and registers the new version in MLflow. At least four non-empty lines and a maximum file size of 10 MB apply. The current detector is an unsupervised `IsolationForest`, so its `fit()` method uses the log messages only and does not accept `new_labels`.
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/models/retrain" -F "file=@.\fresh-logs.txt"
+```
+
 ### Model evaluation API
 
 `POST /api/v1/model-evaluations` accepts JSON containing `model_name`, `model_version`, `y_true`, and `y_pred`. It calculates precision, recall, F1-score, and the full classification report from the supplied label arrays. Labels use `0` for normal and `1` for anomaly. Both arrays must be non-empty and have the same length. This endpoint only evaluates the supplied predictions; it does not read logs or run a model.

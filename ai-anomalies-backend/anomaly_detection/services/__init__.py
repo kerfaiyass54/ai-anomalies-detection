@@ -3,6 +3,7 @@ from .anomaly_pipeline.ingest_log_event import ingest_log_event
 from .anomaly_storage.save_anomalies import save_anomalies
 from .evaluation_storage import get_evaluation, get_evaluation_series, list_evaluations
 from .model_evaluation import evaluate_predictions
+from .model_retraining import retrain_model
 
 __all__ = [
     "evaluate_predictions",
@@ -11,5 +12,6 @@ __all__ = [
     "ingest_log_event",
     "list_evaluations",
     "run_log_anomaly_pipeline",
+    "retrain_model",
     "save_anomalies",
 ]
