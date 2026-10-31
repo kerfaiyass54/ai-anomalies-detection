@@ -88,6 +88,31 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  anomaly-detection:
+    build:
+      context: ./ai-anomalies-backend
+      dockerfile: anomaly_detection/Dockerfile
+    environment:
+      POSTGRES_HOST: postgresql
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-anomalies}
+      POSTGRES_USER: ${POSTGRES_USER:-anomalies}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-sqlite:///./mlflow.db}
+      MLFLOW_ANOMALY_MODEL_NAME: ${MLFLOW_ANOMALY_MODEL_NAME:-log-anomaly-detector}
+    ports:
+      - "127.0.0.1:${ANOMALY_API_PORT:-8001}:8001"
+    volumes:
+      - anomaly_mlflow_data:/mlflow
+    working_dir: /mlflow
+    command: ["uvicorn", "--app-dir", "/app", "anomaly_detection.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks: [data]
+    mem_limit: 2g
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION:-v3.15.1}
     command:
@@ -165,6 +190,7 @@ networks:
 volumes:
   elasticsearch_data:
   postgresql_data:
+  anomaly_mlflow_data:
   prometheus_data:
   alertmanager_data:
   grafana_data:
