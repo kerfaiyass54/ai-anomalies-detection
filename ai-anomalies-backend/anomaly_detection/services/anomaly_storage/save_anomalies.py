@@ -5,6 +5,7 @@ from sqlalchemy import text
 from ...schemas.anomaly import AnomalyRecord, LogSourceType
 from ..anomaly_pipeline.detect_anomalies import DetectedAnomaly
 from .database import get_database_engine
+from .save_anomalies_to_elasticsearch import save_anomalies_to_elasticsearch
 
 
 def save_anomalies(anomalies: Iterable[DetectedAnomaly], *, source_type: LogSourceType) -> list[AnomalyRecord]:
@@ -42,4 +43,5 @@ def save_anomalies(anomalies: Iterable[DetectedAnomaly], *, source_type: LogSour
             )
             saved.append(AnomalyRecord(**result.mappings().one()))
 
+    save_anomalies_to_elasticsearch(saved)
     return saved

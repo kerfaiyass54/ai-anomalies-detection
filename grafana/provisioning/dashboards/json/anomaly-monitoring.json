@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Detected anomalies during the preceding 60 seconds.",
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 5 }] }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto" },
+      "targets": [{ "editorMode": "code", "expr": "anomaly_rate", "legendFormat": "Anomalies per minute", "refId": "A" }],
+      "title": "Anomalies in the last minute",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch-anomalies" },
+      "description": "Anomaly records indexed by the anomaly detection service.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 18, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" } },
+      "targets": [{ "alias": "", "bucketAggs": [], "datasource": { "type": "elasticsearch", "uid": "elasticsearch-anomalies" }, "metrics": [{ "id": "1", "type": "logs" }], "query": "*", "queryType": "lucene", "refId": "A", "timeField": "@timestamp" }],
+      "title": "Recent anomalies",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch-logs" },
+      "description": "Latest raw log events indexed by Logstash.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 10 },
+      "id": 3,
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" } },
+      "targets": [{ "alias": "", "bucketAggs": [], "datasource": { "type": "elasticsearch", "uid": "elasticsearch-logs" }, "metrics": [{ "id": "1", "type": "logs" }], "query": "*", "queryType": "lucene", "refId": "A", "timeField": "@timestamp" }],
+      "title": "Recent logs",
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["logs", "anomalies", "elasticsearch"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Logs and Anomalies",
+  "uid": "logs-anomalies",
+  "version": 1
+}

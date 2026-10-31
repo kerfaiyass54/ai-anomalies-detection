@@ -150,6 +150,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-sqlite:///./mlflow.db}
       MLFLOW_ANOMALY_MODEL_NAME: ${MLFLOW_ANOMALY_MODEL_NAME:-log-anomaly-detector}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_ANOMALIES_INDEX: anomalies
     ports:
       - "127.0.0.1:${ANOMALY_API_PORT:-8001}:8001"
     volumes:
@@ -158,6 +160,8 @@ services:
     command: ["uvicorn", "--app-dir", "/app", "anomaly_detection.main:app", "--host", "0.0.0.0", "--port", "8001"]
     depends_on:
       postgresql:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
     networks: [data, observability]
     mem_limit: 2g

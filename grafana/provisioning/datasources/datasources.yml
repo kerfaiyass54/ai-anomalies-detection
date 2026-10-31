@@ -2,17 +2,31 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
     editable: false
   - name: Elasticsearch
+    uid: elasticsearch-logs
     type: elasticsearch
     access: proxy
     url: http://elasticsearch:9200
-    database: "logs-*"
     jsonData:
+      index: "logs"
       timeField: "@timestamp"
+      logMessageField: message
+      esVersion: "9.5.0"
+    editable: false
+  - name: Elasticsearch Anomalies
+    uid: elasticsearch-anomalies
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    jsonData:
+      index: "anomalies"
+      timeField: "@timestamp"
+      logMessageField: details
       esVersion: "9.5.0"
     editable: false
