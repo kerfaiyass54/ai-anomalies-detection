@@ -6,13 +6,13 @@ from .schema import ensure_evaluations_table
 
 
 def list_evaluations(
-    *, page: int = 1, per_page: int = 100, source_type: str | None = None, model_version: str | None = None
+    *, page: int = 1, per_page: int = 100, model_name: str | None = None, model_version: str | None = None
 ) -> ModelEvaluationPage:
     filters: list[str] = []
     params: dict[str, object] = {"limit": per_page, "offset": (page - 1) * per_page}
-    if source_type is not None:
-        filters.append("source_type = :source_type")
-        params["source_type"] = source_type
+    if model_name is not None:
+        filters.append("model_name = :model_name")
+        params["model_name"] = model_name
     if model_version is not None:
         filters.append("model_version = :model_version")
         params["model_version"] = model_version
@@ -23,21 +23,19 @@ def list_evaluations(
     with engine.begin() as connection:
         ensure_evaluations_table(connection)
         total = connection.execute(
-            text(f"SELECT COUNT(*) FROM model_evaluations {where_clause}"), filter_params
+            text(f"SELECT COUNT(*) FROM model_evaluation_metrics {where_clause}"), filter_params
         ).scalar_one()
         rows = connection.execute(text(f"""
-            SELECT id, evaluated_at, source_type, model_name, model_version,
-                logs_evaluated, anomalies_detected, anomaly_rate, mean_score,
-                median_score, min_score, max_score, dataset_sha256
-            FROM model_evaluations
+            SELECT id, evaluated_at, model_name, model_version,
+                samples_evaluated, precision_score AS "precision", recall_score AS "recall",
+                f1_score, classification_report, input_sha256
+            FROM model_evaluation_metrics
             {where_clause}
             ORDER BY evaluated_at DESC, id DESC
             LIMIT :limit OFFSET :offset
         """), params).mappings().all()
 
     return ModelEvaluationPage(
-        page=page,
-        per_page=per_page,
-        total=total,
+        page=page, per_page=per_page, total=total,
         evaluations=[ModelEvaluation(**row) for row in rows],
     )

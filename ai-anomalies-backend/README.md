@@ -29,18 +29,26 @@ The service reads database settings from the repository-level `.env` (`POSTGRES_
 
 ### Model evaluation API
 
-`POST /api/v1/model-evaluations?source_type=k8s` accepts a `.txt` file and evaluates it with the latest ready registered model. To select a specific model, add `model_version=<version>`. Evaluation runs do not retrain the model. Each run is stored in PostgreSQL with the model version, evaluated log count, anomaly count/rate, score statistics, and a SHA-256 dataset fingerprint. Because this Isolation Forest workflow has no ground-truth labels, these are unsupervised evaluation metrics rather than accuracy/precision/recall.
+`POST /api/v1/model-evaluations` accepts JSON containing `model_name`, `model_version`, `y_true`, and `y_pred`. It calculates precision, recall, F1-score, and the full classification report from the supplied label arrays. Labels use `0` for normal and `1` for anomaly. Both arrays must be non-empty and have the same length. This endpoint only evaluates the supplied predictions; it does not read logs or run a model.
 
-- `GET /api/v1/model-evaluations` lists saved runs, newest first, with optional `source_type` and `model_version` filters.
+Each run is stored in PostgreSQL in `model_evaluation_metrics`, along with model identification, sample count, metrics, report, and a SHA-256 fingerprint of the supplied labels.
+
+- `GET /api/v1/model-evaluations` lists saved runs, newest first, with optional `model_name` and `model_version` filters.
 - `GET /api/v1/model-evaluations/{id}` gets one saved run.
-- `GET /api/v1/model-evaluations/series?limit=500` returns the latest runs in chronological order for charting fields such as `anomaly_rate`, `anomalies_detected`, and `mean_score`.
+- `GET /api/v1/model-evaluations/series?limit=500` returns the latest runs in chronological order for charting `precision`, `recall`, and `f1_score`.
 
-Upload another `.txt` file to the POST endpoint to create a new evaluation. The interactive API documentation is at `http://localhost:8001/docs` when the Compose service is running.
+Submit another pair of label arrays to create a new evaluation. The interactive API documentation is at `http://localhost:8001/docs` when the Compose service is running.
 
 Example upload from the repository root:
 
 ```powershell
 curl.exe -X POST "http://127.0.0.1:8001/api/v1/anomalies/detect?source_type=docker" -F "file=@.\logs.txt"
+```
+
+For classification evaluation, submit the known labels and the model's predictions:
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/model-evaluations" -H "Content-Type: application/json" -d '{"model_name":"log-anomaly-detector","model_version":"1","y_true":[0,0,1,0,1],"y_pred":[0,1,1,0,0]}'
 ```
 
 ## Runtime inspection API

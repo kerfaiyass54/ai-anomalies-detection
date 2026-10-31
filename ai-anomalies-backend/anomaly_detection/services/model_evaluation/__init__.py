@@ -1,3 +1,3 @@
-from .evaluate_log_file import evaluate_log_file
+from .evaluate_predictions import evaluate_predictions
 
-__all__ = ["evaluate_log_file"]
+__all__ = ["evaluate_predictions"]

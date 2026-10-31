@@ -1,7 +1,25 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated, Any
 
-from .anomaly import LogSourceType
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+BinaryLabel = Annotated[int, Field(strict=True, ge=0, le=1)]
+
+
+class ModelEvaluationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str = Field(min_length=1, max_length=255)
+    model_version: str = Field(min_length=1, max_length=64)
+    y_true: list[BinaryLabel] = Field(min_length=1)
+    y_pred: list[BinaryLabel] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def labels_have_same_length(self) -> "ModelEvaluationRequest":
+        if len(self.y_true) != len(self.y_pred):
+            raise ValueError("y_true and y_pred must contain the same number of labels.")
+        return self
 
 
 class ModelEvaluation(BaseModel):
@@ -9,17 +27,14 @@ class ModelEvaluation(BaseModel):
 
     id: int
     evaluated_at: datetime
-    source_type: LogSourceType
     model_name: str
     model_version: str
-    logs_evaluated: int = Field(ge=1)
-    anomalies_detected: int = Field(ge=0)
-    anomaly_rate: float = Field(ge=0.0, le=1.0)
-    mean_score: float
-    median_score: float
-    min_score: float
-    max_score: float
-    dataset_sha256: str = Field(min_length=64, max_length=64)
+    samples_evaluated: int = Field(ge=1)
+    precision: float = Field(ge=0.0, le=1.0)
+    recall: float = Field(ge=0.0, le=1.0)
+    f1_score: float = Field(ge=0.0, le=1.0)
+    classification_report: dict[str, Any]
+    input_sha256: str = Field(min_length=64, max_length=64)
 
 
 class ModelEvaluationPage(BaseModel):
