@@ -5,7 +5,7 @@ from sqlalchemy import text
 from ...schemas.anomaly import AnomalyRecord, LogSourceType
 from ..anomaly_pipeline.detect_anomalies import DetectedAnomaly
 from .database import get_database_engine
-from .save_anomalies_to_elasticsearch import save_anomalies_to_elasticsearch
+from .schema import ensure_anomalies_table
 
 
 def save_anomalies(anomalies: Iterable[DetectedAnomaly], *, source_type: LogSourceType) -> list[AnomalyRecord]:
@@ -16,16 +16,7 @@ def save_anomalies(anomalies: Iterable[DetectedAnomaly], *, source_type: LogSour
 
     engine = get_database_engine()
     with engine.begin() as connection:
-        connection.execute(text("""
-            CREATE TABLE IF NOT EXISTS detected_anomalies (
-                id BIGSERIAL PRIMARY KEY,
-                occurred_at TIMESTAMPTZ NOT NULL,
-                source_type VARCHAR(16) NOT NULL CHECK (source_type IN ('k8s', 'docker', 'jenkins')),
-                details TEXT NOT NULL,
-                score DOUBLE PRECISION NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """))
+        ensure_anomalies_table(connection)
         saved = []
         for record in records:
             result = connection.execute(
@@ -43,5 +34,4 @@ def save_anomalies(anomalies: Iterable[DetectedAnomaly], *, source_type: LogSour
             )
             saved.append(AnomalyRecord(**result.mappings().one()))
 
-    save_anomalies_to_elasticsearch(saved)
     return saved

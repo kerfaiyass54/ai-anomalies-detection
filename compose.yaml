@@ -150,8 +150,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-sqlite:///./mlflow.db}
       MLFLOW_ANOMALY_MODEL_NAME: ${MLFLOW_ANOMALY_MODEL_NAME:-log-anomaly-detector}
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      ELASTICSEARCH_ANOMALIES_INDEX: anomalies
     ports:
       - "127.0.0.1:${ANOMALY_API_PORT:-8001}:8001"
     volumes:
@@ -161,8 +159,6 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
     networks: [data, observability]
     mem_limit: 2g
     healthcheck:
@@ -171,6 +167,28 @@ services:
       timeout: 5s
       retries: 10
       start_period: 45s
+    restart: unless-stopped
+
+  anomaly-elasticsearch-migration:
+    build:
+      context: ./ai-anomalies-backend
+      dockerfile: anomaly_detection/Dockerfile
+    command: ["python", "-m", "anomaly_detection.services.anomaly_storage.run_elasticsearch_migration"]
+    environment:
+      POSTGRES_HOST: postgresql
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-anomalies}
+      POSTGRES_USER: ${POSTGRES_USER:-anomalies}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_ANOMALIES_INDEX: anomalies
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks: [data, observability]
+    mem_limit: 256m
     restart: unless-stopped
 
   prometheus:
