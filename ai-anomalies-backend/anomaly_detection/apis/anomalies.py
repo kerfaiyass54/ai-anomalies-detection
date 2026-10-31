@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from ..errors import AnomalyProcessingError
-from ..schemas.anomaly import AnomalyDetectionResponse, LogSourceType
-from ..services import run_log_anomaly_pipeline, save_anomalies
+from ..schemas.anomaly import AnomalyDetectionResponse, LogEvent, LogEventIngestResponse, LogSourceType
+from ..services import ingest_log_event, run_log_anomaly_pipeline, save_anomalies
 
 router = APIRouter(prefix="/api/v1/anomalies", tags=["anomaly detection"])
 MAX_LOG_FILE_BYTES = 10 * 1024 * 1024
@@ -37,4 +37,21 @@ async def detect_log_anomalies(
         lines_processed=result.lines_processed,
         anomalies_saved=len(saved),
         anomalies=saved,
+    )
+
+
+@router.post("/ingest", response_model=LogEventIngestResponse)
+def ingest_logstash_event(event: LogEvent) -> LogEventIngestResponse:
+    """Score one structured Logstash event with the latest registered model."""
+    try:
+        result = ingest_log_event(event)
+    except AnomalyProcessingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Log event scoring failed. Check model registry and database configuration.") from exc
+    return LogEventIngestResponse(
+        model_name=result.model_name,
+        model_version=result.model_version,
+        anomaly_detected=result.anomaly is not None,
+        anomaly=result.anomaly,
     )

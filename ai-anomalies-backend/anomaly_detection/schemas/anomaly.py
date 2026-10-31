@@ -25,3 +25,20 @@ class AnomalyDetectionResponse(BaseModel):
     lines_processed: int
     anomalies_saved: int
     anomalies: list[AnomalyRecord]
+
+
+class LogEvent(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    message: str
+    source_type: LogSourceType
+    occurred_at: datetime | None = None
+
+
+class LogEventIngestResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str
+    model_version: str
+    anomaly_detected: bool
+    anomaly: AnomalyRecord | None = None

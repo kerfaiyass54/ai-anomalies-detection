@@ -51,6 +51,7 @@ services:
     environment:
       LS_JAVA_OPTS: ${LS_JAVA_OPTS:--Xms512m -Xmx512m}
       XPACK_MONITORING_ENABLED: "false"
+      ANOMALY_DETECTION_URL: http://anomaly-detection:8001/api/v1/anomalies/ingest
     ports:
       - "127.0.0.1:${LOGSTASH_BEATS_PORT:-5044}:5044"
     volumes:
@@ -58,7 +59,9 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-    networks: [observability]
+      anomaly-detection:
+        condition: service_healthy
+    networks: [observability, data]
     mem_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9600/_node/pipelines >/dev/null"]
@@ -111,6 +114,12 @@ services:
         condition: service_healthy
     networks: [data]
     mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
     restart: unless-stopped
 
   prometheus:
